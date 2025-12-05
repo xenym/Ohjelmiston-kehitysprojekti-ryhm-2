@@ -80,10 +80,6 @@ def save_passwords():
         None
     """
 
-    Returns:
-        None
-    """
-
 # Function to load passwords from a JSON file 
 def load_passwords():
      """
@@ -94,6 +90,7 @@ def load_passwords():
 
     Returns:
         None
+     """
 
   # Main method
 def main():
@@ -126,3 +123,7 @@ def main():
 # Execute the main function when the program is run
 if __name__ == "__main__":
     main()
+
+
+
+
