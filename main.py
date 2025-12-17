@@ -2,19 +2,17 @@ import json
 import re
 import random
 import string
+import time
 
-# Caesar cipher encryption and decryption functions (pre-implemented)
 def caesar_encrypt(text, shift):
     encrypted_text = ""
     for char in text:
         if char.isalpha():
             shifted = ord(char) + shift
-            if char.islower():
-                if shifted > ord('z'):
-                    shifted -= 26
-            elif char.isupper():
-                if shifted > ord('Z'):
-                    shifted -= 26
+            if char.islower() and shifted > ord('z'):
+                shifted -= 26
+            elif char.isupper() and shifted > ord('Z'):
+                shifted -= 26
             encrypted_text += chr(shifted)
         else:
             encrypted_text += char
@@ -23,106 +21,128 @@ def caesar_encrypt(text, shift):
 def caesar_decrypt(text, shift):
     return caesar_encrypt(text, -shift)
 
-# Password strength checker function (optional)
 def is_strong_password(password):
-    # ...
+    if len(password) < 8:
+        return False
+    if not re.search(r'[A-Z]', password):
+        return False
+    if not re.search(r'[a-z]', password):
+        return False
+    if not re.search(r'\d', password):
+        return False
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};:\'",.<>?/\\|`~]', password):
+        return False
+    return True
 
-# Password generator function (optional)
 def generate_password(length):
-     """
-    Generate a random strong password of the specified length.
+    if length < 8:
+        length = 8
+    chars = [
+        random.choice(string.ascii_uppercase),
+        random.choice(string.ascii_lowercase),
+        random.choice(string.digits),
+        random.choice(string.punctuation)
+    ]
+    all_chars = string.ascii_letters + string.digits + string.punctuation
+    chars += [random.choice(all_chars) for _ in range(length - 4)]
+    random.shuffle(chars)
+    return ''.join(chars)
 
-    Args:
-        length (int): The desired length of the password.
-
-    Returns:
-        str: A random strong password.
-    """
-
-# Initialize empty lists to store encrypted passwords, websites, and usernames
 encrypted_passwords = []
 websites = []
 usernames = []
 
-# Function to add a new password 
+SHIFT = 7
+
 def add_password():
-    """
-    Add a new password to the password manager.
-
-    This function should prompt the user for the website, username,  and password and store them to lits with same index. Optionally, it should check password strengh with the function is_strong_password. It may also include an option for the user to
-    generate a random strong password by calling the generate_password function.
-
-    Returns:
-        None
-    """
-
-# Function to retrieve a password 
-def get_password():
-    """
-    Retrieve a password for a given website.
-
-    This function should prompt the user for the website name and
-    then display the username and decrypted password for that website.
-
-    Returns:
-        None
-    """
-
-# Function to save passwords to a JSON file 
-def save_passwords():
- """
-    Save the password vault to a file.
-
-    This function should save passwords, websites, and usernames to a text
-    file named "vault.txt" in a structured format.
-
-    Returns:
-        None
-    """
-
-# Function to load passwords from a JSON file 
-def load_passwords():
-     """
-    Load passwords from a file into the password vault.
-
-    This function should load passwords, websites, and usernames from a text
-    file named "vault.txt" (or a more generic name) and populate the respective lists.
-
-    Returns:
-        None
-     """
-
-  # Main method
-def main():
-# implement user interface 
-
-  while True:
-    print("\nPassword Manager Menu:")
-    print("1. Add Password")
-    print("2. Get Password")
-    print("3. Save Passwords")
-    print("4. Load Passwords")
-    print("5. Quit")
-    
-    choice = input("Enter your choice: ")
-    
-    if choice == "1":
-        add_password()
-    elif choice == "2":
-        get_password()
-    elif choice == "3":
-        save_passwords()
-    elif choice == "4":
-        passwords = load_passwords()
-        print("Passwords loaded successfully!")
-    elif choice == "5":
-        break
+    site = input("Syötä sivuston nimi: ")
+    user = input("Syötä käyttäjänimi: ")
+    gen = input("Haluatko generoida vahvan salasanan? (k/e): ").lower()
+    if gen == 'k':
+        try:
+            length = int(input("Anna haluttu pituus (min 8): "))
+        except ValueError:
+            length = 12
+            print("Virheellinen pituus, käytetään 12 merkkiä.")
+        pwd = generate_password(length)
+        print(f"Generoitua salasanaa käytetään: {pwd}")
     else:
-        print("Invalid choice. Please try again.")
+        pwd = input("Syötä salasana: ")
+        if not is_strong_password(pwd):
+            print("Varoitus: salasana on heikko!")
+            proceed = input("Haluatko silti tallentaa tämän salasanan? (k/e): ").lower()
+            if proceed != 'k':
+                print("Salasanaa ei lisätty.")
+                return
+    enc_pwd = caesar_encrypt(pwd, SHIFT)
+    websites.append(site)
+    usernames.append(user)
+    encrypted_passwords.append(enc_pwd)
+    print(f"Salasana {site} lisätty onnistuneesti!")
+    time.sleep(0.5)
 
-# Execute the main function when the program is run
+def get_password():
+    site = input("Syötä sivuston nimi: ")
+    if site in websites:
+        i = websites.index(site)
+        user = usernames[i]
+        pwd = caesar_decrypt(encrypted_passwords[i], SHIFT)
+        print(f"\nSivusto: {site}\nKäyttäjä: {user}\nSalasana: {pwd}")
+    else:
+        print(f"Ei salasanaa sivustolle {site}")
+
+def save_passwords():
+    data = {'websites': websites, 'usernames': usernames, 'encrypted_passwords': encrypted_passwords}
+    try:
+        with open('vault.txt', 'w') as f:
+            json.dump(data, f, indent=4)
+        print("Salasanat tallennettu vault.txt-tiedostoon.")
+    except Exception as e:
+        print(f"Tallennus epäonnistui: {e}")
+
+def load_passwords():
+    global websites, usernames, encrypted_passwords
+    try:
+        with open('vault.txt', 'r') as f:
+            data = json.load(f)
+        websites = data.get('websites', [])
+        usernames = data.get('usernames', [])
+        encrypted_passwords = data.get('encrypted_passwords', [])
+        print(f"Ladattiin {len(websites)} salasanaa onnistuneesti!")
+    except FileNotFoundError:
+        print("Tiedostoa ei löytynyt, aloitetaan tyhjällä vaultilla.")
+    except json.JSONDecodeError:
+        print("Virhe vault-tiedostossa!")
+    except Exception as e:
+        print(f"Lataus epäonnistui: {e}")
+
+def main():
+    print("Hei! Tämä on oma password manager -versio.")
+    while True:
+        print("\nValikko:")
+        print("1. Lisää salasana")
+        print("2. Hae salasana")
+        print("3. Tallenna salasanat")
+        print("4. Lataa salasanat")
+        print("5. Lopeta")
+        choice = input("Valintasi: ")
+        if choice == "1":
+            add_password()
+        elif choice == "2":
+            get_password()
+        elif choice == "3":
+            save_passwords()
+        elif choice == "4":
+            load_passwords()
+        elif choice == "5":
+            print("Kiitos ohjelman käytöstä!")
+            break
+        else:
+            print("Virheellinen valinta, yritä uudelleen.")
+
 if __name__ == "__main__":
     main()
+
 
 
 
